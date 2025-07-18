@@ -13,7 +13,7 @@ using namespace std;
 const int WIDTH = 10;
 const int HEIGHT = 10;
 int cursorX = 0, cursorY = 0;
-char grid[HEIGHT][WIDTH];
+int grid[HEIGHT][WIDTH];
 int gridMain[HEIGHT][WIDTH];
 void displayGrid()
 {
@@ -24,32 +24,33 @@ void displayGrid()
         {
             if (x == cursorX && y == cursorY)
             {
-                if (gridMain[y][x] == 200)
+                if (grid[y][x] == 200)
                     cout << "[F]";
                 else
                     cout << "[*]";
             }
-            else if (gridMain[y][x] == 100)
+            else if (grid[y][x] == 200)
+            {
+                cout << "[F]";
+            }
+            else if (grid[y][x] == 100)
             {
 
-                cout << "[-]";
+                cout << "[ ]";
             }
-            else if (gridMain[y][x] < 0)
+            else if (grid[y][x] < 0)
             {
 
                 cout << "[X]";
             }
-            else if (gridMain[y][x] >= 1 && gridMain[y][x] <= 9)
+            else if (grid[y][x] >= 1 && grid[y][x] <= 9)
             {
-                cout << "[" << gridMain[y][x] << "]";
+                cout << "[" << grid[y][x] << "]";
             }
-            else if (gridMain[y][x] == 200)
+
+            else if (grid[y][x] == 0)
             {
-                cout << "[F]";
-            }
-            else if (gridMain[y][x] == 0)
-            {
-                cout << "[ ]";
+                cout << "[-]";
             }
         }
         cout << endl;
@@ -71,13 +72,13 @@ void setBomb(int grid[][WIDTH])
 {
     srand(time(0));
     int bombCount = 0;
-    while (bombCount < 5)
+    while (bombCount < 4)
     {
         int x = rand() % (WIDTH + 1);
         int y = rand() % (WIDTH + 1);
         if (grid[y][x] == 0)
         {
-            grid[y][x] = -20; // Set bomb
+            grid[y][x] = -100; // Set bomb
             cout << "Bomb placed at: (" << x << ", " << y << ")" << endl;
             bombCount++;
         }
@@ -113,13 +114,13 @@ void calculateNumbers(int grid[][WIDTH])
 }
 void setFlag(int x, int y, int grid[][WIDTH])
 {
-    if (grid[y][x] == 9)
+    if (grid[y][x] == 0)
     {
-        grid[y][x] = 10; // Set flag
+        grid[y][x] = 200; // Set flag
     }
-    else if (grid[y][x] == 10)
+    else if (grid[y][x] == 200)
     {
-        grid[y][x] = 9; // Remove flag
+        grid[y][x] = 0; // Remove flag
     }
 }
 void displayGridMain()
@@ -164,7 +165,7 @@ int main()
                 cursorX++;
             break;
         case 32:
-            setFlag(cursorX, cursorY, gridMain);
+            setFlag(cursorX, cursorY, grid);
             break;
         case 27: // ESC برای خروج
             return 0;
