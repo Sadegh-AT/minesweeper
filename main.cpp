@@ -1,20 +1,43 @@
+
+//! BUG: Some Cell dont open
 #include <iostream>
-#include <conio.h> // برای getch()
+#include <conio.h>
 #include <windows.h>
 #include <vector>
-#include <cstdlib> // for rand() and srand()
-#include <ctime>   // for time()
+#include <queue>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
-// empty point = 100
-// flag = 200
-// number 1-9
-// bomb -1;
-// defult point = 0
+
 const int WIDTH = 10;
 const int HEIGHT = 10;
+const int FLAG = 200;
+const int EMPTY = 0;
+const int UNREVEALED = -2;
+const int BOMB = -1;
+const int BOMBCOUNT = 10;
+int findCount = 0;
+int flagCount = 0;
+bool gameOver = false;
 int cursorX = 0, cursorY = 0;
-int grid[HEIGHT][WIDTH];
-int gridMain[HEIGHT][WIDTH];
+bool firstCell = true;
+int grid[HEIGHT][WIDTH];     // برای وضعیت قابل نمایش به کاربر
+int gridMain[HEIGHT][WIDTH]; // وضعیت واقعی بازی (مین‌ها و اعداد)
+
+void revealAllBomb()
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            if (gridMain[y][x] == BOMB)
+            {
+                grid[y][x] = BOMB;
+            }
+        }
+    }
+}
+
 void displayGrid()
 {
     system("cls");
@@ -24,31 +47,25 @@ void displayGrid()
         {
             if (x == cursorX && y == cursorY)
             {
-                if (grid[y][x] == 200)
-                    cout << "[F]";
-                else
-                    cout << "[*]";
+                cout << "[*]";
             }
-            else if (grid[y][x] == 200)
+            else if (grid[y][x] == FLAG)
             {
                 cout << "[F]";
             }
-            else if (grid[y][x] == 100)
+            else if (grid[y][x] == EMPTY)
             {
-
                 cout << "[ ]";
             }
-            else if (grid[y][x] < 0)
-            {
-
-                cout << "[X]";
-            }
-            else if (grid[y][x] >= 1 && grid[y][x] <= 9)
+            else if (grid[y][x] >= 1 && grid[y][x] <= 8)
             {
                 cout << "[" << grid[y][x] << "]";
             }
-
-            else if (grid[y][x] == 0)
+            else if (grid[y][x] == BOMB)
+            {
+                cout << "[X]";
+            }
+            else
             {
                 cout << "[-]";
             }
@@ -56,120 +73,228 @@ void displayGrid()
         cout << endl;
     }
 }
-void initGrid()
+void displayGridMain()
 {
-    cout << "Initializing grid..." << endl;
     for (int y = 0; y < HEIGHT; y++)
     {
         for (int x = 0; x < WIDTH; x++)
         {
-
-            gridMain[y][x] = 0;
+            if (gridMain[y][x] == BOMB)
+            {
+                cout << "[X]";
+            }
+            else
+            {
+                cout << "[" << gridMain[y][x] << "]";
+            }
         }
+        cout << endl;
     }
 }
-void setBomb(int grid[][WIDTH])
+void displayGridReal()
+{
+
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            cout << "[" << grid[y][x] << "]";
+        }
+        cout << endl;
+    }
+}
+void initGrid()
+{
+    for (int y = 0; y < HEIGHT; y++)
+        for (int x = 0; x < WIDTH; x++)
+            grid[y][x] = UNREVEALED;
+}
+
+void setBomb(int grid[][WIDTH], int cursorX, int cursorY)
 {
     srand(time(0));
     int bombCount = 0;
-    while (bombCount < 4)
+    while (bombCount < BOMBCOUNT) // تعداد مین‌ها را اینجا می‌توان تنظیم کرد
     {
-        int x = rand() % (WIDTH + 1);
-        int y = rand() % (WIDTH + 1);
-        if (grid[y][x] == 0)
+        int x = rand() % WIDTH;
+        int y = rand() % HEIGHT;
+        if (abs(x - cursorX) <= 1 && abs(y - cursorY) <= 1)
+            continue;
+
+        if (grid[y][x] != BOMB)
         {
-            grid[y][x] = -100; // Set bomb
-            cout << "Bomb placed at: (" << x << ", " << y << ")" << endl;
+            grid[y][x] = BOMB;
             bombCount++;
         }
     }
 }
+
 void calculateNumbers(int grid[][WIDTH])
 {
     for (int y = 0; y < HEIGHT; y++)
     {
         for (int x = 0; x < WIDTH; x++)
         {
-            if (grid[y][x] < 0)
+            if (grid[y][x] == BOMB)
             {
-                // Increment numbers around the bomb
                 for (int dy = -1; dy <= 1; dy++)
                 {
                     for (int dx = -1; dx <= 1; dx++)
                     {
-                        if (dy == 0 && dx == 0)
-                            continue; // Skip the bomb itself
-                        int nx = x + dx;
-                        int ny = y + dy;
-                        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] >= 0)
-                        {
-
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] != BOMB)
                             grid[ny][nx]++;
-                        }
                     }
                 }
             }
         }
     }
 }
-void setFlag(int x, int y, int grid[][WIDTH])
+
+void setFlag(int x, int y)
 {
-    if (grid[y][x] == 0)
+    if (grid[y][x] == UNREVEALED && flagCount < BOMBCOUNT)
     {
-        grid[y][x] = 200; // Set flag
-    }
-    else if (grid[y][x] == 200)
-    {
-        grid[y][x] = 0; // Remove flag
-    }
-}
-void displayGridMain()
-{
-    system("cls");
-    for (int y = 0; y < HEIGHT; y++)
-    {
-        for (int x = 0; x < WIDTH; x++)
+        flagCount++;
+        grid[y][x] = FLAG;
+        if (gridMain[y][x] == BOMB)
         {
-            cout << gridMain[y][x] << " ";
+            findCount++;
         }
-        cout << endl;
+    }
+
+    else if (grid[y][x] == FLAG)
+    {
+        flagCount--;
+        grid[y][x] = UNREVEALED;
+        if (gridMain[y][x] == BOMB)
+        {
+            findCount--;
+        }
     }
 }
+
+void revealCell(int x, int y)
+{
+    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT)
+        return;
+
+    // if (grid[y][x] != UNREVEALED)
+    //     return;
+
+    if (gridMain[y][x] == BOMB)
+    {
+
+        gameOver = true;
+    }
+
+    queue<pair<int, int>> q;
+    q.push({x, y});
+
+    while (!q.empty())
+    {
+        auto [cx, cy] = q.front();
+        q.pop();
+
+        if (grid[cx][cy] != UNREVEALED)
+
+            continue;
+
+        if (gridMain[cy][cx] == 0)
+        {
+            grid[cy][cx] = gridMain[cy][cx];
+
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = cx + dx;
+                    int ny = cy + dy;
+                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT)
+                    {
+                        if (grid[ny][nx] == UNREVEALED)
+                        {
+
+                            if (gridMain[ny][nx] == 0)
+                                q.push({nx, ny});
+                            else if (gridMain[ny][nx] > 0)
+                                grid[ny][nx] = gridMain[ny][nx];
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            grid[cy][cx] = gridMain[cy][cx];
+        }
+    }
+}
+
 int main()
 {
-    initGrid();
-    setBomb(gridMain);
-    calculateNumbers(gridMain);
-    displayGrid();
-    // displayGridMain();
-    while (true)
-    {
-        int key = _getch(); // بدون نیاز به Enter
 
-        switch (key)
-        {
-        case 72: // بالا (arrow up)
-            if (cursorY > 0)
-                cursorY--;
-            break;
-        case 80: // پایین (arrow down)
-            if (cursorY < HEIGHT - 1)
-                cursorY++;
-            break;
-        case 75: // چپ (arrow left)
-            if (cursorX > 0)
-                cursorX--;
-            break;
-        case 77: // راست (arrow right)
-            if (cursorX < WIDTH - 1)
-                cursorX++;
-            break;
-        case 32:
-            setFlag(cursorX, cursorY, grid);
-            break;
-        case 27: // ESC برای خروج
-            return 0;
-        }
+    if (firstCell)
+    {
+        initGrid();
         displayGrid();
     }
+
+    while (!gameOver)
+    {
+        if (findCount == BOMBCOUNT)
+        {
+            cout << "You found all the bombs!" << endl;
+            gameOver = true;
+            break;
+        }
+        int key = _getch();
+        switch (key)
+        {
+        case 72:
+            if (cursorY > 0)
+                cursorY--;
+            break; // بالا
+        case 80:
+            if (cursorY < HEIGHT - 1)
+                cursorY++;
+            break; // پایین
+        case 75:
+            if (cursorX > 0)
+                cursorX--;
+            break; // چپ
+        case 77:
+            if (cursorX < WIDTH - 1)
+                cursorX++;
+            break; // راست
+        case 32:
+            setFlag(cursorX, cursorY);
+            break; // اسپیس = پرچم
+        case 13:
+            if (firstCell)
+            {
+                setBomb(gridMain, cursorX, cursorY);
+                calculateNumbers(gridMain);
+                revealCell(cursorX, cursorY);
+                firstCell = false;
+                break;
+            }
+            revealCell(cursorX, cursorY);
+            break; // اینتر = باز کردن
+        case 27:
+            return 0; // ESC
+        }
+        displayGrid();
+        cout << "====================" << endl;
+        displayGridMain();
+        cout << "====================" << endl;
+        displayGridReal();
+        cout << "====================" << endl;
+        cout << "Flags: " << flagCount << "  Finds: " << findCount << endl;
+    }
+    revealAllBomb();
+    displayGrid();
+    cout << "====================" << endl;
+    cout << "Flags: " << flagCount << "  Finds: " << findCount << endl;
+    exit(0);
 }

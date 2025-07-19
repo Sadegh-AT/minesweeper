@@ -2,6 +2,7 @@
   "files.associations": {
     "*.ejs": "html",
     "*.proto": "proto3",
-    "iostream": "cpp"
+    "iostream": "cpp",
+    "ostream": "cpp"
   }
 }
